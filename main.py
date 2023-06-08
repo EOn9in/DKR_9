@@ -59,8 +59,8 @@ class Main(tk.Frame):
         self.tree.heading('name', text='Полное имя')
         self.tree.heading('pol', text='Пол')
         self.tree.heading('game', text='Первое появление')
-        self.tree.heading('storona', text='Статус')
-        self.tree.heading('status', text='Сторона')
+        self.tree.heading('storona', text='Сторона')
+        self.tree.heading('status', text='Статус')
 
         self.tree.pack(side=tk.LEFT)
 
@@ -198,7 +198,7 @@ class Update(Child):
         self.default_data()
 
     def init_edit(self):
-        self.title('Редактировать позицию')
+        self.title('Редактировать персонажа')
         btn_edit = ttk.Button(self, text='Редактировать')
         btn_edit.place(x=205, y=170)
         btn_edit.bind('<Button-1>', lambda event: self.view.update_record(self.entry_name.get(),
