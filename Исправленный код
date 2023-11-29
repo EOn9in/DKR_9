@@ -1,0 +1,301 @@
+import tkinter as tk
+import tkinter.messagebox
+from tkinter import ttk
+import mysql.connector
+from mysql.connector import Error
+
+class Main(tk.Frame):
+    def __init__(self, root):
+        super().__init__(root)
+        self.init_main()
+        self.db = db
+        self.view_records()
+
+    def init_main(self):
+        toolbar = tk.Frame(bg='#d7d8e0', bd=2)
+        toolbar.pack(side=tk.TOP, fill=tk.X)
+
+        self.add_img = tk.PhotoImage(file='add.png')
+        btn_open_dialog = tk.Button(toolbar, text='Добавить персонажа', command=self.open_dialog, bg='#d7d8e0', bd=0,
+                                    compound=tk.TOP, image=self.add_img)
+        btn_open_dialog.pack(side=tk.LEFT)
+
+        self.update_img = tk.PhotoImage(file='update.png')
+        btn_edit_dialog = tk.Button(toolbar, text='Редактировать', bg='#d7d8e0', bd=0, image=self.update_img,
+                                    compound=tk.TOP, command=self.open_update_dialog)
+        btn_edit_dialog.pack(side=tk.LEFT)
+
+        self.delete_img = tk.PhotoImage(file='delete.png')
+        btn_delete = tk.Button(toolbar, text='Удалить персонажа', bg='#d7d8e0', bd=0, image=self.delete_img,
+                               compound=tk.TOP, command=self.delete_records)
+        btn_delete.pack(side=tk.RIGHT)
+
+        self.search_img = tk.PhotoImage(file='search.png')
+        btn_search = tk.Button(toolbar, text='Поиск', bg='#d7d8e0', bd=0, image=self.search_img,
+                               compound=tk.TOP, command=self.open_search_dialog)
+        btn_search.pack(side=tk.RIGHT)
+
+        self.refresh_img = tk.PhotoImage(file='refresh.png')
+        btn_refresh = tk.Button(toolbar, text='Обновить', bg='#d7d8e0', bd=0, image=self.refresh_img,
+                                compound=tk.TOP, command=self.view_records)
+        btn_refresh.pack(side=tk.RIGHT)
+
+        label = tk.Label(root, text="Таблица 1 - Персонажи серии игр Resident Evil")
+        label.pack()
+
+        label = tk.Label(toolbar, text ='Resident Evil', font=("Times New Roman", 52, "bold"))
+        label.pack(anchor='center')
+
+        self.tree = ttk.Treeview(self, columns=('ID', 'name', 'pol', 'game', 'storona', 'status'), height=15, show='headings')
+
+        self.tree.column('ID', width=30, anchor=tk.CENTER)
+        self.tree.column('name', width=300, anchor=tk.CENTER)
+        self.tree.column('pol', width=75, anchor=tk.CENTER)
+        self.tree.column('game', width=270, anchor=tk.CENTER)
+        self.tree.column('storona', width=75, anchor=tk.CENTER)
+        self.tree.column('status', width=100, anchor=tk.CENTER)
+
+        self.tree.heading('ID', text='ID')
+        self.tree.heading('name', text='Полное имя')
+        self.tree.heading('pol', text='Пол')
+        self.tree.heading('game', text='Первое появление')
+        self.tree.heading('storona', text='Сторона')
+        self.tree.heading('status', text='Статус')
+
+        self.tree.pack(side=tk.LEFT)
+
+        scroll = tk.Scrollbar(self, command=self.tree.yview)
+        scroll.pack(side=tk.LEFT, fill=tk.Y)
+        self.tree.configure(yscrollcommand=scroll.set)
+
+    def records(self, name, pol, game, storona, status):
+        self.db.insert_data(name, pol, game, storona, status)
+        self.view_records()
+
+    def update_record(self, name, pol, game, storona, status):
+        try:
+            self.db.cursor.execute(
+                '''UPDATE characters SET name=%s, pol=%s, game=%s, storona=%s, status=%s WHERE ID=%s''',
+                (name, pol, game, storona, status, self.tree.set(self.tree.selection()[0], "#1"))
+            )
+            self.db.conn.commit()
+            self.view_records()
+        except IndexError:
+            tkinter.messagebox.showinfo(title="Примечание", message="Для редактирования выберите нужную запись")
+
+    def view_records(self):
+        self.db.cursor.execute("SELECT * FROM characters")
+        [self.tree.delete(i) for i in self.tree.get_children()]
+        [self.tree.insert("", "end", values=row) for row in self.db.cursor.fetchall()]
+
+    def delete_records(self):
+        for selection_item in self.tree.selection():
+            self.db.cursor.execute("DELETE FROM characters WHERE id=%s", (self.tree.set(selection_item, "#1"),))
+            self.db.conn.commit()
+            self.view_records()
+
+    def search_records(self, name):
+        name = "%" + name + "%"
+        self.db.cursor.execute("SELECT * FROM characters WHERE name LIKE %s", (name,))
+        [self.tree.delete(i) for i in self.tree.get_children()]
+        [self.tree.insert("", "end", values=row) for row in self.db.cursor.fetchall()]
+
+    def open_dialog(self):
+        Child()
+
+    def open_update_dialog(self):
+        Update()
+
+    def open_search_dialog(self):
+        Search()
+
+class Child(tk.Toplevel):
+    def __init__(self):
+        super().__init__(root)
+        self.init_child()
+        self.view = app
+
+    def init_child(self):
+        self.title('Добавить персонажа')
+        self.geometry('400x220+400+300')
+        self.resizable(False, False)
+
+        label_name = tk.Label(self, text='Полное имя:')
+        label_name.place(x=50, y=20)
+        label_select = tk.Label(self, text='Первое появление:')
+        label_select.place(x=50, y=50)
+        label_pol = tk.Label(self, text='Пол:')
+        label_pol.place(x=50, y=80)
+        label_pol = tk.Label(self, text='Сторона:')
+        label_pol.place(x=50, y=110)
+        label_status = tk.Label(self, text='Статус:')
+        label_status.place(x=50, y=140)
+
+        self.entry_name = ttk.Entry(self)
+        self.entry_name.place(x=200, y=20)
+
+        self.combobox = ttk.Combobox(self,state="readonly", width=27,
+                                                   values=[u'Resident Evil (1996)',
+                                                   u'Resident Evil 2 (1998)',
+                                                   u'Resident Evil 3: Nemesis (1999)',
+                                                   u'Resident Evil Code: Veronica (2000)',
+                                                   u'Resident Evil Zero (2002)',
+                                                   u'Resident Evil 4 (2005)',
+                                                   u'Resident Evil 5 (2009)',
+                                                   u'Resident Evil 6 (2012)',
+                                                   u'Resident Evil 7: Biohazard (2017)',
+                                                   u'Resident Evil Village (2021)'])
+        self.combobox.current(0)
+        self.combobox.place(x=200, y=50)
+
+        self.combobox_pol = ttk.Combobox(self, state="readonly", width=25,
+                                            values=[u'Мужской',
+                                                    u'Не определено',
+                                                    u'Женский'])
+        self.combobox_pol.current(0)
+        self.combobox_pol.place(x=200, y=80)
+
+        self.combobox_storona = ttk.Combobox(self, state="readonly", width=25,
+                                            values=[u'Добро',
+                                                    u'Неизвестно',
+                                                    u'Зло'])
+        self.combobox_storona.current(0)
+        self.combobox_storona.place(x=200, y=110)
+
+        self.combobox_status = ttk.Combobox(self,state="readonly", width=25,
+                                                             values=[u'Жив',
+                                                             u'Неизвестно',
+                                                             u'Мёртв'])
+        self.combobox_status.current(0)
+        self.combobox_status.place(x=200, y=140)
+
+        btn_cancel = ttk.Button(self, text='Закрыть', command=self.destroy)
+        btn_cancel.place(x=300, y=170)
+
+        self.btn_ok = ttk.Button(self, text='Добавить')
+        self.btn_ok.place(x=200, y=170)
+        self.btn_ok.bind('<Button-1>', self.on_button_click)
+
+    def on_button_click(self, event):
+        # проверка на пустые поля
+        if len(self.entry_name.get()) == 0:
+            tkinter.messagebox.showerror("Ошибка", "Заполните все поля!")
+            return
+        else:
+            # выполнение действий при нажатии на кнопку
+            self.view.records(self.entry_name.get(), self.combobox_pol.get(), self.combobox.get(), self.combobox_storona.get(), self.combobox_status.get())
+            self.grab_set()
+            self.focus_set()
+            self.entry_name.delete(0, len(self.entry_name.get()))
+            tkinter.messagebox.showinfo("Добавление", 'Запись успешно добавлена')
+
+class Update(Child):
+    def __init__(self):
+        super().__init__()
+        self.init_edit()
+        self.view = app
+        self.db = db
+        self.default_data()
+
+    def init_edit(self):
+        self.title('Редактировать персонажа')
+        btn_edit = ttk.Button(self, text='Редактировать')
+        btn_edit.place(x=205, y=170)
+        btn_edit.bind('<Button-1>', lambda event: self.view.update_record(self.entry_name.get(),
+                                                                       self.combobox_pol.get(),
+                                                                       self.combobox.get(),
+                                                                       self.combobox_storona.get(),
+                                                                       self.combobox_status.get()))
+
+        self.btn_ok.destroy()
+
+    def default_data(self):
+        try:
+            self.db.cursor.execute("SELECT * FROM characters WHERE id=%s",
+                              (self.view.tree.set(self.view.tree.selection()[0], "#1"),))
+            row = self.db.cursor.fetchone()
+            self.entry_name.insert(0, row[1])
+            self.combobox_status.insert(0, row[3])
+        except IndexError:
+            tkinter.messagebox.showinfo(title="Примечание", message="Для редактирования выберите нужную запись")
+
+
+class Search(tk.Toplevel):
+    def __init__(self):
+        super().__init__()
+        self.init_search()
+        self.view = app
+
+    def init_search(self):
+        self.title('Поиск')
+        self.geometry('300x100+400+300')
+        self.resizable(False, False)
+
+        label_search = tk.Label(self, text='Поиск')
+        label_search.place(x=50, y=20)
+
+        self.entry_search = ttk.Entry(self)
+        self.entry_search.place(x=105, y=20, width=150)
+
+        btn_cancel = ttk.Button(self, text='Закрыть', command=self.destroy)
+        btn_cancel.place(x=185, y=50)
+
+        btn_search = ttk.Button(self, text='Поиск')
+        btn_search.place(x=105, y=50)
+        btn_search.bind('<Button-1>', lambda event: self.view.search_records(self.entry_search.get()))
+        btn_search.bind('<Button-1>', lambda event: self.destroy(), add='+')
+
+class DB:
+    def __init__(self):
+        try:
+            # Подключение к базе данных MySQL, используя параметры подключения.
+            self.conn = mysql.connector.connect(host='5.183.188.132',
+                                                database='db_vgu_test7',
+                                                user='db_vgu_student',
+                                                password='thasrCt3pKYWAYcK')
+
+            if self.conn.is_connected():
+                # Получение информации о сервере.
+                db_Info = self.conn.get_server_info()
+                
+                # Создание курсора. Аргумент "dictionary=True" задает формат результатов как словарь.
+                self.cursor = self.conn.cursor(dictionary=True)
+                
+                # Выполнение SQL-запроса, создаём таблицу "characters", если она еще не существует.
+                self.cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS characters
+                    (id INT AUTO_INCREMENT PRIMARY KEY, 
+                    name VARCHAR(255), 
+                    pol VARCHAR(255), 
+                    game VARCHAR(255), 
+                    storona VARCHAR(255), 
+                    status VARCHAR(255))''')
+            else:
+                # Сообщение об ошибке подключения к базе данных.
+                print("Fail to connect to MySQL database")
+
+        # Обработчик исключений, который выводит сообщение при ошибке подключения к MySQL.
+        except Error as e:
+            print(f"Error while connecting to MySQL: {str(e)}")
+
+    def insert_data(self, name, pol, game, storona, status):
+        # Выполнение SQL-запроса, который вставляет новую строку в таблицу "characters".
+        self.cursor.execute('''
+            INSERT INTO characters (name, pol, game, storona, status)
+            VALUES (%s, %s, %s, %s, %s)''',
+            (name, pol, game, storona, status))
+        # Завершение транзакции.
+        self.conn.commit()
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    db = DB()
+    app = Main(root)
+    app.pack()
+    root.title("Персонажи серии игр Resident Evil")
+    root.iconbitmap('Icon.ico')
+    root.geometry("905x450+430+200")
+    root.minsize(905, 450)
+    root.resizable(True, True)
+    root.mainloop()
